@@ -5,7 +5,7 @@ OWNER_ID = 7743703095  # Your Telegram ID
 
 async def file_info(update: Update, context: CallbackContext):
     if not update.message:
-        print("DEBUG: No message received.")
+        #print("DEBUG: No message received.")
         return
 
     if update.message.from_user.id != OWNER_ID:
@@ -14,7 +14,7 @@ async def file_info(update: Update, context: CallbackContext):
 
     document = update.message.document
     if not document:
-        print("DEBUG: No document received.")
+        #print("DEBUG: No document received.")
         await update.message.reply_text("Please send a movie file.")
         return
 
@@ -24,10 +24,9 @@ async def file_info(update: Update, context: CallbackContext):
     file_name = document.file_name
 
     # Debug print to check values
-    print(f"DEBUG: File ID: {file_id}, Size: {file_size_mb:.2f}MB, Name: {file_name}")
+    #print(f"DEBUG: File ID: {file_id}, Size: {file_size_mb:.2f}MB, Name: {file_name}")
 
     # Correct reply format
-    response_text = f"🎬 *File Name:* `{file_name}`\n📦 *Size:* `{file_size_mb:.2f}MB`\n🆔 *File ID:* `{file_id}`"
-    
+    response_text = f"🎬 *File Name:\n* `{file_name}`\n\n📦 *Size:\n* `{file_size_mb:.2f}MB`\n\n🆔 *File ID:\n* `{file_id}`"
 
     await update.message.reply_text(response_text, parse_mode="MarkdownV2")
