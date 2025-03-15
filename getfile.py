@@ -1,6 +1,8 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
+OWNER_ID = 7743703095 
+
 # Get file ID, Size & Name (Owner Only)
 async def file_info(update: Update, context: CallbackContext):
     if update.message.from_user.id != OWNER_ID:
