@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import CallbackContext
 
 # Get file ID, Size & Name (Owner Only)
-async def get_file_id(update: Update, context: CallbackContext):
+async def file_info(update: Update, context: CallbackContext):
     if update.message.from_user.id != OWNER_ID:
         await update.message.reply_text("🚫 You are not authorized to use this command.")
         return
