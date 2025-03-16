@@ -2,7 +2,7 @@ import requests
 import asyncio
 
 # Your Render/Flask URL
-FLASK_URL = "https://tele-bot-78oi.onrender.com"
+FLASK_URL = "https://tele-bot-t5yd.onrender.com"
 
 async def keep_alive():
     while True:
