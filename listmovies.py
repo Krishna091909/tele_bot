@@ -5,7 +5,6 @@ from loadmovies import load_movies
 OWNER_ID = 7743703095  
 
 async def list_movies(update: Update, context: CallbackContext):
-    """Send a numbered list of movie names only."""
     if update.message.from_user.id != OWNER_ID:
         await update.message.reply_text("🚫 You are not authorized to use this command.")
         return
