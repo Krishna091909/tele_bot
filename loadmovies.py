@@ -1,34 +1,36 @@
 import gspread
-from google.oauth2.service_account import Credentials
+from oauth2client.service_account import ServiceAccountCredentials
 
-# Google Sheets API Authentication
-SCOPES = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-CREDENTIALS_FILE = "credentials.json"  # Your credentials file
-
-# Connect to Google Sheets
-creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+# Google Sheets Authentication
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
 client = gspread.authorize(creds)
 
-# Open your sheet (Replace with your sheet name)
-SHEET_NAME = "MoviesDatabase"
-sheet = client.open(SHEET_NAME).sheet1  
+# Google Sheet ID
+SHEET_ID = "1ZBNk7zJ5bPHhfb2UgLPC27A-phWkhlvtBHiHH_JjsyU" # Replace with your actual Sheet ID
+sheet = client.open_by_key(SHEET_ID).sheet1
 
+# Load movies from Google Sheets
 def load_movies():
-    """Load movies from Google Sheet."""
     movies = {}
-    data = sheet.get_all_values()  # Get all rows
-    for row in data[1:]:  # Skip header
-        movie_name, file_id, file_size, file_name = row
-        movies[movie_name] = {
-            "file_id": file_id,
-            "file_size": file_size,
-            "file_name": file_name
+    data = sheet.get_all_records()
+    for row in data:
+        movies[row["Movie Name"]] = {
+            "file_id": row["File ID"],
+            "file_size": row["File Size"],
+            "file_name": row["File Name"]
         }
     return movies
 
-def save_movies(movies):
-    """Save movies to Google Sheet (Rewrites the entire sheet)."""
-    sheet.clear()  # Clear the existing data
-    sheet.append_row(["Movie Name", "File ID", "File Size", "File Name"])  # Header
-    for movie, details in movies.items():
-        sheet.append_row([movie, details["file_id"], details["file_size"], details["file_name"]])
+# Save movie to Google Sheets
+def save_movie(movie_name, file_id, file_size, file_name):
+    sheet.append_row([movie_name, file_id, file_size, file_name])
+
+# Remove movie from Google Sheets
+def remove_movie(movie_name):
+    records = sheet.get_all_values()
+    for i, row in enumerate(records):
+        if row and row[0] == movie_name:
+            sheet.delete_rows(i+1)
+            return True
+    return False
