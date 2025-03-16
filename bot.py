@@ -16,24 +16,22 @@ from deletemessages import delete_message_later
 from movierequest import handle_movie_request
 from sendmovie import send_movie
 
-import os
-
+# ✅ Load environment variables
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+PORT = int(os.getenv("PORT", 8080))  # Default port 8080
 GOOGLE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-PORT = os.getenv("PORT", 8080)  # Default to 8080 if missing
 
-# SAFE PRINTING (Only Prints If They Exist)
+# ✅ Debugging: Print safe environment checks
 print(f"✅ BOT_TOKEN Loaded: {'Yes' if BOT_TOKEN else 'No'}")
 print(f"✅ PORT: {PORT}")
 print(f"✅ GOOGLE CREDENTIALS Loaded: {'Yes' if GOOGLE_CREDENTIALS else 'No'}")
 
 if not BOT_TOKEN:
-    print("⚠️ ERROR: BOT_TOKEN is missing!")
+    raise ValueError("❌ ERROR: BOT_TOKEN is missing! Set it in your environment variables.")
 if not GOOGLE_CREDENTIALS:
-    print("⚠️ ERROR: GOOGLE_APPLICATION_CREDENTIALS is missing!")
+    print("⚠️ WARNING: GOOGLE_APPLICATION_CREDENTIALS is missing. Google Sheets features may not work.")
 
-
-# Flask app for keeping the bot alive
+# ✅ Flask app for keeping the bot alive
 app = Flask(__name__)
 
 @app.route('/')
@@ -92,36 +90,32 @@ def home():
     """
 
 def run_flask():
-    app.run(host='0.0.0.0', port=8080)
+    app.run(host="0.0.0.0", port=PORT)
 
-# Load BOT_TOKEN securely from environment variables
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN is missing! Add it to environment variables.")
-
-# Debug Handler to Print Incoming Messages
+# ✅ Debug Handler: Logs every received message
 async def debug_message(update: Update, context: CallbackContext):
-    print(f"Received message: {update.message.text}")
+    if update.message:
+        print(f"📩 Received message: {update.message.text}")
 
 async def main():
-    # Start Flask server in a background thread
+    # ✅ Start Flask server in a background thread
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, run_flask)
 
-    # Initialize Telegram bot
+    # ✅ Initialize Telegram bot
     tg_app = Application.builder().token(BOT_TOKEN).build()
 
-    # Debugging Handler (Logs all received messages)
-    tg_app.add_handler(MessageHandler(filters.ALL, debug_message))
+    # ✅ Debugging Handler (Check if bot is receiving messages)
+    tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, debug_message))
 
-    # Command Handlers
+    # ✅ Command Handlers
     tg_app.add_handler(CommandHandler("start", help_command))
     tg_app.add_handler(CommandHandler("help", help_command))
     tg_app.add_handler(MessageHandler(filters.Document.ALL, file_info))
     tg_app.add_handler(CommandHandler("removemovie", remove_movie))
     tg_app.add_handler(CommandHandler("listmovies", list_movies))
 
-    # Conversation Handler for adding movies
+    # ✅ Conversation Handler for adding movies
     tg_app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addmovie", start_add_movie)],
         states={
@@ -133,11 +127,11 @@ async def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
-    # Message Handlers
+    # ✅ Message Handlers
     tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_movie_request))
     tg_app.add_handler(CallbackQueryHandler(send_movie))
 
-    print("Movie Bot is running...")
+    print("🚀 Movie Bot is running...")
     await tg_app.run_polling()
 
 if __name__ == "__main__":
