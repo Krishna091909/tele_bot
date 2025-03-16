@@ -120,7 +120,7 @@ async def main():
     tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_movie_request))
     tg_app.add_handler(CallbackQueryHandler(send_movie))
 
-    print("Bot is running...")
+    print("Movie Bot is running...")
     await tg_app.run_polling()
 
 if __name__ == "__main__":
