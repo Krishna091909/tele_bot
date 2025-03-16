@@ -4,3 +4,7 @@ python-telegram-bot
 gunicorn
 gspread
 google-auth
+gspread
+oauth2client
+flask
+python-telegram-bot
