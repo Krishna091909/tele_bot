@@ -1,3 +1,4 @@
+import os
 import asyncio
 from flask import Flask
 from telegram import Update
@@ -76,16 +77,25 @@ def home():
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-# Replace this with your actual bot token
-BOT_TOKEN = "7903162641:AAFJkO5g6QzJnxUYwpLcaYUvaIHzC84mxvk"
+# Load BOT_TOKEN securely from environment variables
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("BOT_TOKEN is missing! Add it to environment variables.")
+
+# Debug Handler to Print Incoming Messages
+async def debug_message(update: Update, context: CallbackContext):
+    print(f"Received message: {update.message.text}")
 
 async def main():
-    # Start Flask server in the background
+    # Start Flask server in a background thread
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, run_flask)
 
-    # Initialize Telegram bot application
+    # Initialize Telegram bot
     tg_app = Application.builder().token(BOT_TOKEN).build()
+
+    # Debugging Handler (Logs all received messages)
+    tg_app.add_handler(MessageHandler(filters.ALL, debug_message))
 
     # Command Handlers
     tg_app.add_handler(CommandHandler("start", help_command))
@@ -94,7 +104,7 @@ async def main():
     tg_app.add_handler(CommandHandler("removemovie", remove_movie))
     tg_app.add_handler(CommandHandler("listmovies", list_movies))
 
-    # Conversation Handler for adding movies step by step
+    # Conversation Handler for adding movies
     tg_app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addmovie", start_add_movie)],
         states={
