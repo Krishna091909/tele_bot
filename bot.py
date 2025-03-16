@@ -1,79 +1,101 @@
-import os
-import json
-import gspread
-from google.oauth2.service_account import Credentials
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ConversationHandler, CallbackContext, filters
+import asyncio
 from flask import Flask
 from threading import Thread
+from telegram import Update
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler, 
+    ConversationHandler, CallbackContext, filters
+)
+from addmovie import start_add_movie, movie_name_handler, file_id_handler, file_size_handler, file_name_handler, cancel, MOVIE_NAME, FILE_ID, FILE_SIZE, FILE_NAME
+from removemovie import remove_movie
+from getfile import file_info
+from listmovies import list_movies
+from loadmovies import load_movies
+from help import help_command
+from deletemessages import delete_message_later
+from movierequest import handle_movie_request
+from sendmovie import send_movie
 
-# Load Google Sheets API Credentials from Environment Variable
-SCOPES = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-credentials_info = json.loads(os.getenv("GOOGLE_CREDENTIALS"))
-creds = Credentials.from_service_account_info(credentials_info, scopes=SCOPES)
-client = gspread.authorize(creds)
-
-# Open Google Sheet
-SHEET_NAME = "MoviesDatabase"
-sheet = client.open(SHEET_NAME).sheet1
-
-def load_movies():
-    """Load movies from Google Sheet."""
-    movies = {}
-    data = sheet.get_all_values()
-    for row in data[1:]:
-        if len(row) >= 4:
-            movie_name, file_id, file_size, file_name = row[:4]
-            movies[movie_name] = {
-                "file_id": file_id,
-                "file_size": file_size,
-                "file_name": file_name
-            }
-    return movies
-
-def save_movies(movies):
-    """Save movies to Google Sheet."""
-    sheet.clear()
-    sheet.append_row(["Movie Name", "File ID", "File Size", "File Name"])
-    for movie, details in movies.items():
-        sheet.append_row([movie, details["file_id"], details["file_size"], details["file_name"]])
-
-# Flask app
+# Flask app for keeping the bot alive
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "<h2>Bot is Running...</h2>"
+    return """
+    <html>
+    <head>
+        <title>Bot Status</title>
+        <style>
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #121212;
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .loader {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: conic-gradient(
+                    red, yellow, lime, cyan, blue, magenta, red
+                );
+                animation: spin 1s linear infinite;
+            }
+            .text {
+                font-size: 1.5em;
+                margin-top: 20px;
+                animation: pulse 1.5s infinite alternate;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            @keyframes pulse {
+                0% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="loader"></div>
+            <h2 class="text">Bot is Running...</h2>
+        </div>
+    </body>
+    </html>
+    """
 
 def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
-# Telegram Bot Setup
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-OWNER_ID = 7743703095
-MOVIE_NAME, FILE_ID, FILE_SIZE, FILE_NAME = range(4)
+# Replace this with your actual bot token
+BOT_TOKEN = "7903162641:AAFJkO5g6QzJnxUYwpLcaYUvaIHzC84mxvk"
 
 def main():
+    # Start Flask server in a separate thread
     app_thread = Thread(target=run_flask)
     app_thread.start()
-    
-    tg_app = Application.builder().token(BOT_TOKEN).build()
-    
-    from addmovie import start_add_movie, movie_name_handler, file_id_handler, file_size_handler, file_name_handler, cancel
-    from removemovie import remove_movie
-    from getfile import file_info
-    from listmovies import list_movies
-    from movierequest import handle_movie_request
-    from sendmovie import send_movie
-    from help import help_command
-    from deletemessages import delete_message_later
 
+    # Initialize Telegram bot application
+    tg_app = Application.builder().token(BOT_TOKEN).build()
+
+    # Command Handlers
     tg_app.add_handler(CommandHandler("start", help_command))
     tg_app.add_handler(CommandHandler("help", help_command))
+    tg_app.add_handler(MessageHandler(filters.Document.ALL, file_info))
     tg_app.add_handler(CommandHandler("removemovie", remove_movie))
     tg_app.add_handler(CommandHandler("listmovies", list_movies))
-    tg_app.add_handler(MessageHandler(filters.Document.ALL, file_info))
     
+    # Conversation Handler for adding movies step by step
     tg_app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addmovie", start_add_movie)],
         states={
@@ -85,9 +107,9 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
+    # Message Handlers
     tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_movie_request))
     tg_app.add_handler(CallbackQueryHandler(send_movie))
-    tg_app.add_handler(MessageHandler(filters.ALL, delete_message_later))
 
     print("Bot is running...")
     tg_app.run_polling()
