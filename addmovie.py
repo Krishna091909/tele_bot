@@ -1,54 +1,118 @@
+import asyncio
+from flask import Flask
+from threading import Thread
 from telegram import Update
-from telegram.ext import CallbackContext, ConversationHandler
-from loadmovies import load_movies, save_movies
+from telegram.ext import (
+    Application, CommandHandler, MessageHandler, CallbackQueryHandler, 
+    ConversationHandler, CallbackContext, filters
+)
+from addmovie import start_add_movie, movie_name_handler, file_id_handler, file_size_handler, file_name_handler, cancel, MOVIE_NAME, FILE_ID, FILE_SIZE, FILE_NAME
+from removemovie import remove_movie
+from getfile import file_info
+from listmovies import list_movies
+from loadmovies import load_movies
+from help import help_command
+from deletemessages import delete_message_later
+from movierequest import handle_movie_request
+from sendmovie import send_movie
 
-# Conversation States
-MOVIE_NAME, FILE_ID, FILE_SIZE, FILE_NAME = range(4)
-OWNER_ID = 7743703095  # Your Telegram ID
+# Flask app for keeping the bot alive
+app = Flask(__name__)
 
-async def start_add_movie(update: Update, context: CallbackContext):
-    """Start movie addition."""
-    if update.message.from_user.id != OWNER_ID:
-        await update.message.reply_text("🚫 You are not authorized.")
-        return ConversationHandler.END
-    await update.message.reply_text("🎬 Enter **Movie Name**:")
-    return MOVIE_NAME
+@app.route('/')
+def home():
+    return """
+    <html>
+    <head>
+        <title>Bot Status</title>
+        <style>
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #121212;
+                color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+            }
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            .loader {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background: conic-gradient(
+                    red, yellow, lime, cyan, blue, magenta, red
+                );
+                animation: spin 1s linear infinite;
+            }
+            .text {
+                font-size: 1.5em;
+                margin-top: 20px;
+                animation: pulse 1.5s infinite alternate;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            @keyframes pulse {
+                0% { opacity: 0.5; }
+                100% { opacity: 1; }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="loader"></div>
+            <h2 class="text">Bot is Running...</h2>
+        </div>
+    </body>
+    </html>
+    """
 
-async def movie_name_handler(update: Update, context: CallbackContext):
-    """Get movie name."""
-    context.user_data["movie_name"] = update.message.text
-    await update.message.reply_text("📂 Enter **File ID**:")
-    return FILE_ID
+def run_flask():
+    app.run(host='0.0.0.0', port=8080)
 
-async def file_id_handler(update: Update, context: CallbackContext):
-    """Get file ID."""
-    context.user_data["file_id"] = update.message.text
-    await update.message.reply_text("📏 Enter **File Size** (e.g., 500MB):")
-    return FILE_SIZE
+# Replace this with your actual bot token
+BOT_TOKEN = "7903162641:AAFJkO5g6QzJnxUYwpLcaYUvaIHzC84mxvk"
 
-async def file_size_handler(update: Update, context: CallbackContext):
-    """Get file size."""
-    context.user_data["file_size"] = update.message.text
-    await update.message.reply_text("📄 Enter **File Name** (e.g., movie.mp4):")
-    return FILE_NAME
+def main():
+    # Start Flask server in a separate thread
+    app_thread = Thread(target=run_flask)
+    app_thread.start()
 
-async def file_name_handler(update: Update, context: CallbackContext):
-    """Save movie details."""
-    context.user_data["file_name"] = update.message.text
+    # Initialize Telegram bot application
+    tg_app = Application.builder().token(BOT_TOKEN).build()
 
-    # Store in Google Sheets
-    movies = load_movies()
-    movies[context.user_data["movie_name"]] = {
-        "file_id": context.user_data["file_id"],
-        "file_size": context.user_data["file_size"],
-        "file_name": context.user_data["file_name"]
-    }
-    save_movies(movies)
+    # Command Handlers
+    tg_app.add_handler(CommandHandler("start", help_command))
+    tg_app.add_handler(CommandHandler("help", help_command))
+    tg_app.add_handler(MessageHandler(filters.Document.ALL, file_info))
+    tg_app.add_handler(CommandHandler("removemovie", remove_movie))
+    tg_app.add_handler(CommandHandler("listmovies", list_movies))
+    
+    # Conversation Handler for adding movies step by step
+    tg_app.add_handler(ConversationHandler(
+        entry_points=[CommandHandler("addmovie", start_add_movie)],
+        states={
+            MOVIE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, movie_name_handler)],
+            FILE_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, file_id_handler)],
+            FILE_SIZE: [MessageHandler(filters.TEXT & ~filters.COMMAND, file_size_handler)],
+            FILE_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, file_name_handler)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel)]
+    ))
 
-    await update.message.reply_text(f"✅ **'{context.user_data['movie_name']}'** added successfully!")
-    return ConversationHandler.END
+    # Message Handlers
+    tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_movie_request))
+    tg_app.add_handler(CallbackQueryHandler(send_movie))
 
-async def cancel(update: Update, context: CallbackContext):
-    """Cancel process."""
-    await update.message.reply_text("❌ Movie addition cancelled.")
-    return ConversationHandler.END
+    print("Bot is running...")
+    tg_app.run_polling()
+
+if __name__ == "__main__":
+    main()
