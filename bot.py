@@ -1,5 +1,6 @@
 import asyncio
 from flask import Flask
+from threading import Thread
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler, MessageHandler, CallbackQueryHandler, 
@@ -79,10 +80,10 @@ def run_flask():
 # Replace this with your actual bot token
 BOT_TOKEN = "7903162641:AAFJkO5g6QzJnxUYwpLcaYUvaIHzC84mxvk"
 
-async def main():
-    # Start Flask server in the background
-    loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, run_flask)
+def main():
+    # Start Flask server in a separate thread
+    app_thread = Thread(target=run_flask)
+    app_thread.start()
 
     # Initialize Telegram bot application
     tg_app = Application.builder().token(BOT_TOKEN).build()
@@ -93,7 +94,7 @@ async def main():
     tg_app.add_handler(MessageHandler(filters.Document.ALL, file_info))
     tg_app.add_handler(CommandHandler("removemovie", remove_movie))
     tg_app.add_handler(CommandHandler("listmovies", list_movies))
-
+    
     # Conversation Handler for adding movies step by step
     tg_app.add_handler(ConversationHandler(
         entry_points=[CommandHandler("addmovie", start_add_movie)],
@@ -111,7 +112,7 @@ async def main():
     tg_app.add_handler(CallbackQueryHandler(send_movie))
 
     print("Bot is running...")
-    await tg_app.run_polling()
+    tg_app.run_polling()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
