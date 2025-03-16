@@ -16,6 +16,23 @@ from deletemessages import delete_message_later
 from movierequest import handle_movie_request
 from sendmovie import send_movie
 
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+GOOGLE_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+PORT = os.getenv("PORT", 8080)  # Default to 8080 if missing
+
+# SAFE PRINTING (Only Prints If They Exist)
+print(f"✅ BOT_TOKEN Loaded: {'Yes' if BOT_TOKEN else 'No'}")
+print(f"✅ PORT: {PORT}")
+print(f"✅ GOOGLE CREDENTIALS Loaded: {'Yes' if GOOGLE_CREDENTIALS else 'No'}")
+
+if not BOT_TOKEN:
+    print("⚠️ ERROR: BOT_TOKEN is missing!")
+if not GOOGLE_CREDENTIALS:
+    print("⚠️ ERROR: GOOGLE_APPLICATION_CREDENTIALS is missing!")
+
+
 # Flask app for keeping the bot alive
 app = Flask(__name__)
 
