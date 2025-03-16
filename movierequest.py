@@ -1,11 +1,8 @@
-import asyncio
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import CallbackContext
 from loadmovies import load_movies
-from deletemessages import delete_message_later
 
 async def handle_movie_request(update: Update, context: CallbackContext):
-    """Handles user movie search and deletes messages after 5 minutes in groups."""
     movies = load_movies()
     movie_name = update.message.text.lower()
     matched_movies = [key for key in movies.keys() if movie_name in key.lower()]
@@ -16,9 +13,10 @@ async def handle_movie_request(update: Update, context: CallbackContext):
             for name in matched_movies
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        msg = await update.message.reply_text("🎬 Here is what I found for your query 👇:", reply_markup=reply_markup)
+        await update.message.reply_text("🎬 Found these movies:", reply_markup=reply_markup)
     else:
-        msg = await update.message.reply_text("❌ Movie not found! Please check the spelling.")
+        await update.message.reply_text("❌ Movie not found! Please check the spelling.")
+
 
     # Check if running in a group or supergroup
     if update.message.chat.type in ["group", "supergroup"]:
